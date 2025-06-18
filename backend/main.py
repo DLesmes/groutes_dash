@@ -88,7 +88,7 @@ async def get_visits(
 ):
     """Get visit records with optional filtering"""
     try:
-        # Load all records first
+        # Load all records first using concurrent processing
         all_records = load_visits_from_csv(str(data_path))
         
         # Apply filters
