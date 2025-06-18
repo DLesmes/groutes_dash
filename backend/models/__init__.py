@@ -4,15 +4,11 @@ Models package for the application
 from .visits import (
     Location,
     VisitRecord,
-    VisitResponse,
-    LocationStats,
-    FilterParams
+    VisitResponse
 )
 
 __all__ = [
     "Location",
     "VisitRecord", 
-    "VisitResponse",
-    "LocationStats",
-    "FilterParams"
+    "VisitResponse"
 ]

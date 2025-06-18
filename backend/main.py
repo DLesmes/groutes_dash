@@ -4,15 +4,15 @@ from typing import List, Optional
 import pandas as pd
 from pathlib import Path
 import logging
+import os
+from dotenv import load_dotenv
+
+# Load environment variables first
+load_dotenv()
 
 # Import from the new structure
-from models.visits import VisitRecord, VisitResponse, LocationStats, FilterParams
-from utils.csv_utils import (
-    examine_csv_structure, 
-    load_visits_from_csv, 
-    get_coordinate_statistics,
-    get_unique_places_from_csv
-)
+from models.visits import VisitRecord, VisitResponse
+from utils.csv_utils import load_visits_from_csv
 from settings import settings
 
 # Configure logging
@@ -53,23 +53,6 @@ def validate_data_file(data_path: Path = Depends(get_data_file_path)) -> Path:
         )
     return data_path
 
-@app.on_event("startup")
-async def startup_event():
-    """Application startup event"""
-    logger.info(f"Starting {settings.app_name} v{settings.app_version}")
-    logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"Data file: {settings.get_data_file_path()}")
-    
-    # Log settings warnings
-    warnings = settings.validate_settings()
-    for warning in warnings:
-        logger.warning(warning)
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown event"""
-    logger.info("Shutting down application")
-
 @app.get("/")
 async def root():
     """Root endpoint"""
@@ -77,7 +60,8 @@ async def root():
         "message": f"{settings.app_name} is running", 
         "version": settings.app_version,
         "debug": settings.debug,
-        "data_file": str(settings.get_data_file_path())
+        "data_file": str(settings.get_data_file_path()),
+        "env_data_path": settings.data_file_path
     }
 
 @app.get("/health")
@@ -88,28 +72,6 @@ async def health_check():
         "service": settings.app_name,
         "version": settings.app_version
     }
-
-@app.get("/api/config")
-async def get_config():
-    """Get application configuration (non-sensitive)"""
-    return {
-        "app_name": settings.app_name,
-        "version": settings.app_version,
-        "debug": settings.debug,
-        "max_records_per_request": settings.max_records_per_request,
-        "cache_enabled": settings.cache_enabled,
-        "allowed_origins": settings.allowed_origins
-    }
-
-@app.get("/api/structure")
-async def get_data_structure(data_path: Path = Depends(validate_data_file)):
-    """Get information about the CSV data structure"""
-    try:
-        structure = examine_csv_structure(str(data_path))
-        return {"success": True, "structure": structure}
-    except Exception as e:
-        logger.error(f"Error examining data structure: {e}")
-        raise HTTPException(status_code=500, detail=f"Error examining data structure: {str(e)}")
 
 @app.get("/api/visits", response_model=VisitResponse)
 async def get_visits(
@@ -158,81 +120,6 @@ async def get_visits(
     except Exception as e:
         logger.error(f"Error loading visits data: {e}")
         raise HTTPException(status_code=500, detail=f"Error loading data: {str(e)}")
-
-@app.get("/api/visits/stats", response_model=LocationStats)
-async def get_visit_statistics(data_path: Path = Depends(validate_data_file)):
-    """Get statistics about the visit data"""
-    try:
-        records = load_visits_from_csv(str(data_path))
-        
-        if not records:
-            return LocationStats(
-                total_visits=0,
-                unique_places=0,
-                date_range={"start": None, "end": None},
-                coordinates_summary={"valid_coordinates": 0, "invalid_coordinates": 0}
-            )
-        
-        # Calculate statistics
-        unique_places = len(set(r.place for r in records))
-        date_range = {
-            "start": min(r.timestamp for r in records).isoformat(),
-            "end": max(r.timestamp for r in records).isoformat()
-        }
-        
-        coord_stats = get_coordinate_statistics(records)
-        
-        logger.info(f"Calculated statistics for {len(records)} records")
-        
-        return LocationStats(
-            total_visits=len(records),
-            unique_places=unique_places,
-            date_range=date_range,
-            coordinates_summary=coord_stats
-        )
-        
-    except Exception as e:
-        logger.error(f"Error calculating statistics: {e}")
-        raise HTTPException(status_code=500, detail=f"Error calculating statistics: {str(e)}")
-
-@app.get("/api/visits/{record_id}")
-async def get_visit_by_id(
-    record_id: int,
-    data_path: Path = Depends(validate_data_file)
-):
-    """Get a specific visit record by ID (index)"""
-    try:
-        records = load_visits_from_csv(str(data_path))
-        
-        if record_id < 0 or record_id >= len(records):
-            raise HTTPException(
-                status_code=404, 
-                detail=f"Record ID {record_id} out of range (0-{len(records)-1})"
-            )
-        
-        return {"success": True, "data": records[record_id]}
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error loading record {record_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Error loading record: {str(e)}")
-
-@app.get("/api/places")
-async def get_unique_places(data_path: Path = Depends(validate_data_file)):
-    """Get list of unique places"""
-    try:
-        places = get_unique_places_from_csv(str(data_path))
-        
-        return {
-            "success": True,
-            "places": places,
-            "count": len(places)
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting unique places: {e}")
-        raise HTTPException(status_code=500, detail=f"Error getting places: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

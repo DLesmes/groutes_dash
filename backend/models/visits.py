@@ -73,18 +73,3 @@ class VisitResponse(BaseModel):
     data: List[VisitRecord] = Field(default_factory=list, description="List of visit records")
     total: int = Field(0, description="Total number of records")
     error: Optional[str] = Field(None, description="Error message if any")
-
-class LocationStats(BaseModel):
-    """Statistics for location data"""
-    total_visits: int = Field(..., description="Total number of visits")
-    unique_places: int = Field(..., description="Number of unique places")
-    date_range: dict = Field(..., description="Date range of visits")
-    coordinates_summary: dict = Field(..., description="Summary of coordinate data")
-
-class FilterParams(BaseModel):
-    """Parameters for filtering visit data"""
-    start_date: Optional[datetime] = Field(None, description="Start date filter")
-    end_date: Optional[datetime] = Field(None, description="End date filter")
-    place: Optional[str] = Field(None, description="Place name filter")
-    limit: Optional[int] = Field(100, ge=1, le=1000, description="Maximum number of records to return")
-    offset: Optional[int] = Field(0, ge=0, description="Number of records to skip")
