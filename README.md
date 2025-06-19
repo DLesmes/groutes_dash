@@ -99,9 +99,9 @@ Feel free to open an issue or submit a pull request.
 
 ## 📬 Contact
 
-- **Author:** Uriel Mazabuel
-- **Email:** <your-email@example.com>
-- **GitHub:** [your-github-profile](https://github.com/your-github-profile)
+- **Author:** Diego Lesmes
+- **Email:** <dalejandro24203@gmail.com>
+- **GitHub:** [your-github-profile]([https://github.com/your-github-profile](https://github.com/DLesmes))
 
 ---
 
