@@ -29,15 +29,9 @@ def load_visits_from_df(
         if place:
             df = df[df['place'].str.contains(place, case=False, na=False)].copy()
         if start_date:
-            start = pd.to_datetime(start_date)
-            if getattr(start, 'tzinfo', None) is not None:
-                start = start.replace(tzinfo=None)
-            df = df[df['timestamp'] >= start].copy()
+            df = df[df['timestamp'].dt.date >= start_date].copy()
         if end_date:
-            end = pd.to_datetime(end_date)
-            if getattr(end, 'tzinfo', None) is not None:
-                end = end.replace(tzinfo=None)
-            df = df[df['timestamp'] <= end].copy()
+            df = df[df['timestamp'].dt.date <= end_date].copy()
 
         # Pagination
         if offset:

@@ -67,20 +67,18 @@ async def health_check():
 
 @app.get("/api/visits")
 async def get_visits(
-    end_date: date = Query(date.today(), description="End date (YYYY-MM-DD)"),
+    end_date: date = Query(date.today(), description="Date to filter (YYYY-MM-DD)"),
     limit: Optional[int] = Query(settings.max_records_per_request, ge=1, le=settings.max_records_per_request),
     offset: Optional[int] = Query(0, ge=0),
     place: Optional[str] = Query(None),
     data_path: Path = Depends(validate_data_file)
 ):
-    # Calculate the start of the 30-day window
-    start_date = end_date - timedelta(days=30)
-
-    df = app.state.visits_df.copy()
+    # 1-day window: start_date = end_date
+    start_date = end_date
 
     try:
         records = load_visits_from_df(
-            df,
+            app.state.visits_df.copy(),
             place=place,
             start_date=start_date,
             end_date=end_date,
