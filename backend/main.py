@@ -63,7 +63,7 @@ async def health_check():
 
 @app.get("/api/visits")
 async def get_visits(
-    end_date: date = Query(date.today(), description="Date to filter (YYYY-MM-DD)"),
+    end_date: date = Query(date(2014, 6, 11), description="Date to filter (YYYY-MM-DD)"),
     limit: Optional[int] = Query(settings.max_records_per_request, ge=1, le=settings.max_records_per_request),
     offset: Optional[int] = Query(0, ge=0),
     place: Optional[str] = Query(None),

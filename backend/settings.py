@@ -23,7 +23,7 @@ class Settings:
         self.port = int(os.getenv('PORT', '8000'))
         
         # Data settings
-        self.data_file_path = os.getenv('DATA_FILE_PATH', 'data/99-visitas_uriel.csv')
+        self.data_file_path = os.getenv('DATA_FILE_PATH', 'data/visitas_business_days.csv')
         self.max_records_per_request = int(os.getenv('MAX_RECORDS_PER_REQUEST', '1000'))
         
         # CORS settings
