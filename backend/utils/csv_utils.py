@@ -2,131 +2,50 @@
 Utilities for handling CSV data
 """
 import pandas as pd
-from pathlib import Path
-from typing import List, Dict, Any, Optional
-import sys
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import numpy as np
+from typing import Optional, List, Any
 
-# Add the backend directory to Python path for imports
-backend_dir = Path(__file__).parent.parent
-sys.path.append(str(backend_dir))
-
-from models.visits import VisitRecord
-
-def parse_coordinates_batch(coordinates_series: pd.Series) -> tuple:
+def load_visits_from_df(
+    df: pd.DataFrame,
+    place: Optional[str] = None,
+    start_date: Optional[Any] = None,  # Accepts date, datetime, or str
+    end_date: Optional[Any] = None,
+    limit: Optional[int] = None,
+    offset: Optional[int] = None
+) -> List[dict]:
     """
-    Parse coordinates from a pandas Series using vectorized operations
-    
-    Args:
-        coordinates_series: Pandas Series with coordinate strings
-        
-    Returns:
-        Tuple of (latitudes, longitudes) as numpy arrays
-    """
-    # Create empty arrays
-    latitudes = np.full(len(coordinates_series), np.nan)
-    longitudes = np.full(len(coordinates_series), np.nan)
-    
-    # Vectorized parsing
-    for idx, coord_str in enumerate(coordinates_series):
-        try:
-            # Try comma separator first, then space separator
-            if ',' in str(coord_str):
-                coords = str(coord_str).strip().split(',')
-            else:
-                coords = str(coord_str).strip().split()
-            
-            if len(coords) == 2:
-                lat, lon = float(coords[0]), float(coords[1])
-                # Validate coordinates
-                if -90 <= lat <= 90 and -180 <= lon <= 180:
-                    latitudes[idx] = lat
-                    longitudes[idx] = lon
-        except (ValueError, IndexError):
-            continue
-    
-    return latitudes, longitudes
-
-def process_chunk(chunk: pd.DataFrame) -> List[VisitRecord]:
-    """
-    Process a chunk of data and convert to VisitRecord objects
-    
-    Args:
-        chunk: DataFrame chunk to process
-        
-    Returns:
-        List of VisitRecord objects
+    Filter visit records from a DataFrame, returning a list of dicts.
     """
     try:
-        # Parse coordinates in batch
-        latitudes, longitudes = parse_coordinates_batch(chunk['point'])
-        
-        # Convert to records - use enumerate instead of chunk.index
-        records = []
-        for local_idx, (_, row) in enumerate(chunk.iterrows()):
-            try:
-                record = VisitRecord(
-                    timestamp=pd.to_datetime(row['timestamp']),
-                    point=str(row['point']),
-                    place=str(row['place']),
-                    latitude=latitudes[local_idx] if not np.isnan(latitudes[local_idx]) else None,
-                    longitude=longitudes[local_idx] if not np.isnan(longitudes[local_idx]) else None
-                )
-                records.append(record)
-            except Exception as e:
-                print(f"Error parsing row in chunk: {e}")
-                continue
-        
-        return records
-    except Exception as e:
-        print(f"Error processing chunk: {e}")
-        return []
+        # Always parse as datetime and remove timezone info
+        df = df.copy()
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        if hasattr(df['timestamp'].dt, 'tz'):
+            df['timestamp'] = df['timestamp'].dt.tz_localize(None)
 
-def load_visits_from_csv(file_path: str, limit: Optional[int] = None, chunk_size: int = 5000) -> List[VisitRecord]:
-    """
-    Load visit records from CSV file using pandas and concurrent processing
-    
-    Args:
-        file_path: Path to the CSV file
-        limit: Maximum number of records to load
-        chunk_size: Size of chunks for concurrent processing
-        
-    Returns:
-        List of VisitRecord objects
-    """
-    try:
-        # Read CSV with pandas
-        df = pd.read_csv(file_path)
-        
+        if df['timestamp'].isnull().any():
+            raise ValueError("Some timestamps could not be parsed.")
+
+        # Filtering
+        if place:
+            df = df[df['place'].str.contains(place, case=False, na=False)].copy()
+        if start_date:
+            start = pd.to_datetime(start_date)
+            if getattr(start, 'tzinfo', None) is not None:
+                start = start.replace(tzinfo=None)
+            df = df[df['timestamp'] >= start].copy()
+        if end_date:
+            end = pd.to_datetime(end_date)
+            if getattr(end, 'tzinfo', None) is not None:
+                end = end.replace(tzinfo=None)
+            df = df[df['timestamp'] <= end].copy()
+
+        # Pagination
+        if offset:
+            df = df.iloc[offset:].copy()
         if limit:
-            df = df.head(limit)
-        
-        # If dataset is small, process directly
-        if len(df) <= chunk_size:
-            return process_chunk(df)
-        
-        # Split into chunks for concurrent processing
-        chunks = [df[i:i + chunk_size] for i in range(0, len(df), chunk_size)]
-        
-        all_records = []
-        
-        # Use ThreadPoolExecutor for concurrent processing
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            # Submit all chunks for processing
-            future_to_chunk = {executor.submit(process_chunk, chunk): chunk for chunk in chunks}
-            
-            # Collect results as they complete
-            for future in as_completed(future_to_chunk):
-                try:
-                    chunk_records = future.result()
-                    all_records.extend(chunk_records)
-                except Exception as e:
-                    print(f"Error processing chunk: {e}")
-                    continue
-        
-        return all_records
-        
+            df = df.iloc[:limit].copy()
+
+        return df.to_dict(orient='records')
     except Exception as e:
-        print(f"Error loading CSV: {e}")
-        return []
+        # Raise a clear error for FastAPI to catch
+        raise RuntimeError(f"Error loading data: {e}")
