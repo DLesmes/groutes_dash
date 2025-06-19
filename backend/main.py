@@ -2,16 +2,12 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
 from pathlib import Path
-from dotenv import load_dotenv
 from datetime import date, timedelta
 from contextlib import asynccontextmanager
 import pandas as pd
 
-# Load environment variables first
-load_dotenv()
-
-from utils.csv_utils import load_visits_from_df
 from settings import settings
+from services.filtering_visits import FilteringVisits
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,7 +73,7 @@ async def get_visits(
     start_date = end_date
 
     try:
-        records = load_visits_from_df(
+        records = FilteringVisits.filter(
             app.state.visits_df.copy(),
             place=place,
             start_date=start_date,
