@@ -17,6 +17,8 @@ requests==2.31.0
 
 # Data visualization
 plotly==5.17.0
+folium==0.16.0
+streamlit-folium==0.18.0
 
 # Development and utilities
 python-multipart==0.0.6

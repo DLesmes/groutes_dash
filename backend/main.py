@@ -6,8 +6,8 @@ from datetime import date, timedelta
 from contextlib import asynccontextmanager
 import pandas as pd
 
-from settings import settings
-from services.filtering_visits import FilteringVisits
+from backend.settings import settings
+from backend.services.filtering_visits import FilteringVisits
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

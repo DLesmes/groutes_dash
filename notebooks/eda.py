@@ -57,6 +57,10 @@ df_visits_business_days
 # %% [markdown]
 # ## visits with business days data
 df_visits_business_days.info()
+# %% [markdown]
+# ## droping duplicates on visits with business days data
+df_visits_business_days.drop_duplicates(subset=['timestamp'], inplace=True)
+df_visits_business_days.info()
 # %%
 df_visits_business_days.describe().T
 # %%
@@ -71,6 +75,10 @@ date_features_visits_business_days = df_types_visits_business_days[df_types_visi
 date_features_visits_business_days
 # %%
 df_visits_business_days[object_features_visits_business_days].describe(include='all').T
+# %%
+df_visits_business_days.fecha.value_counts()
+# %%
+df_visits_business_days[df_visits_business_days['fecha'] == '2022-02-12']
 # %% [markdown]
 # ## Save data
 df_visits_business_days.to_csv('../backend/data/visitas_business_days.csv', index=False)
