@@ -2,6 +2,7 @@
 # %%
 import pandas as pd
 from datetime import date
+import json
 
 # %% [markdown]
 # ## Load data
@@ -86,4 +87,34 @@ df_visits[df_visits['date'] == date(2023, 12, 24)].place.value_counts()
 # %% [markdown]
 # ## Save data
 df_visits.to_csv('../backend/data/visitas_business_days.csv', index=False)
+# %% [markdown]
+# ## json visitas business days by day
+df_visits['timestamp'] = df_visits['timestamp'].astype(str)
+dict_visits_business_days_by_day = {}
+for day in df_visits['date'].unique():
+    data = df_visits[df_visits['date'] == day][[
+            'place',
+            'timestamp',
+            'latitude',
+            'longitude'
+        ]].to_dict(orient='records')
+    if str(day) == '2014-06-06':
+        print(f"Processing day: {day} before removing consecutive duplicates")
+        print(f"Data length: {len(data)}")
+        print(data)
+    # Remove consecutive duplicates based on 'place'
+    data_no_consecutive_duplicates = [x for i, x in enumerate(data) if i == 0 or x['place'] != data[i - 1]['place']]
+    if str(day) == '2014-06-06':
+        print(f"Processing day: {day} after removing consecutive duplicates")
+        print(f"Data length: {len(data_no_consecutive_duplicates)}")
+        print(data_no_consecutive_duplicates)
+
+    dict_visits_business_days_by_day[str(day)] = {
+        "data": data_no_consecutive_duplicates,
+        "business_day": any(df_visits[df_visits['date'] == day]['business_day']),
+    }
+# %%
+file = "../backend/data/visitas_business_days_by_day.json"
+with open(file, 'w') as f:
+    json.dump(dict_visits_business_days_by_day, f, indent=4)
 # %%
