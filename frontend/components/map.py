@@ -3,18 +3,28 @@ import folium
 from streamlit_folium import st_folium
 from folium.plugins import BeautifyIcon
 
-def plot_routes(visits):
-    if not visits:
+# Default route coordinates (example: two points in Bogotá)
+DEFAULT_ROUTE = [
+    (4.753851, -74.1019103),
+    (4.7579942, -74.1059858)
+]
+
+def plot_routes(visits, use_default=False):
+    if not visits and not use_default:
         st.info("No hay datos para mostrar en el mapa.")
         return
 
-    # Extract coordinates in order
-    coordinates = []
-    for v in visits:
-        lat = v.get("latitude") or v.get("lat")
-        lon = v.get("longitude") or v.get("lon") or v.get("lng")
-        if lat is not None and lon is not None:
-            coordinates.append((lat, lon))
+    # Use default route if requested
+    if use_default:
+        coordinates = DEFAULT_ROUTE
+    else:
+        # Extract coordinates in order
+        coordinates = []
+        for v in visits:
+            lat = v.get("latitude") or v.get("lat")
+            lon = v.get("longitude") or v.get("lon") or v.get("lng")
+            if lat is not None and lon is not None:
+                coordinates.append((lat, lon))
 
     if not coordinates:
         st.warning("No se encontraron coordenadas para el mapa.")
