@@ -118,3 +118,13 @@ file = "../backend/data/visitas_business_days_by_day.json"
 with open(file, 'w') as f:
     json.dump(dict_visits_business_days_by_day, f, indent=4)
 # %%
+import json
+file = "../backend/data/visitas_business_days_by_day.json"
+dict_visits_business_days_by_day = json.load(open(file, 'r'))
+dict_visits_business_days_by_day_sample = {k: v for k, v in dict_visits_business_days_by_day.items() if k < '2014-06-15'}
+dict_visits_business_days_by_day_sample
+# %%
+file = "../backend/data/visitas_business_days_by_day_sample.json"
+with open(file, 'w') as f:
+    json.dump(dict_visits_business_days_by_day_sample, f, indent=4)
+# %%
