@@ -5,6 +5,6 @@ def sidebar_navigation():
     page = st.sidebar.radio(
         "",
         ["ℹ️ Cómo funciona", "🏷️ Etiquetador"],
-        index=1  # Default to Etiquetador
+        index=2  # Default to how it works
     )
     return page

@@ -8,11 +8,6 @@ def show_stats(visits):
         return
 
     try:
-        # List all points with their order and place
-        st.markdown("**Puntos del recorrido:**")
-        for idx, v in enumerate(visits, start=1):
-            st.write(f"{idx}. {v.get('place', 'N/A')}")
-
         # Calculate and show duration in a friendly format
         if "duration" in visits[0]:
             st.write(f"**Duración:** {visits[0]['duration']}")
@@ -28,5 +23,12 @@ def show_stats(visits):
             if minutes or not duration_str:
                 duration_str.append(f"{minutes} minuto{'s' if minutes != 1 else ''}")
             st.write(f"**Duración:** {' '.join(duration_str)}")
+            
+        # List all points with their order and place
+        st.markdown("**Puntos del recorrido:**")
+        for idx, v in enumerate(visits, start=1):
+            st.write(f"{idx}. {v.get('place', 'N/A')}")
+
+
     except Exception:
         st.write("No se pudieron calcular todas las estadísticas.")
