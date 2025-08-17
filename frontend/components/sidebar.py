@@ -1,7 +1,10 @@
 import streamlit as st
-from datetime import date
 
-def date_filter():
-    st.sidebar.header("Filtros")
-    selected_date = st.sidebar.date_input("Selecciona la fecha", value=date(2015, 6, 30))
-    return selected_date
+def sidebar_navigation():
+    st.sidebar.title("Secciones")
+    page = st.sidebar.radio(
+        "",
+        ["ℹ️ Cómo funciona", "🏷️ Etiquetador"],
+        index=2  # Default to how it works
+    )
+    return page
