@@ -127,4 +127,27 @@ dict_visits_business_days_by_day_sample
 file = "../backend/data/visitas_business_days_by_day_sample.json"
 with open(file, 'w') as f:
     json.dump(dict_visits_business_days_by_day_sample, f, indent=4)
-# %%
+# %% [markdown]
+# ## from json to parquet
+import pyarrow as pa
+import pyarrow.parquet as pq
+import json
+KEY_FIELD = "__key__"   
+file = "../backend/data/visitas_business_days_by_day.json"
+PARQUET_LOCAL = "../backend/data/visitas_business_days_by_day.parquet"
+with open(file, "r", encoding="utf-8") as f:
+    src = json.load(f)
+if not isinstance(src, dict):
+    raise ValueError("Expected a top-level dict-of-dicts JSON.")
+
+rows = []
+for k, v in src.items():
+    if not isinstance(v, dict):
+        v = {"__value__": v}
+    if KEY_FIELD in v:
+        raise ValueError(f"Inner dict contains reserved field {KEY_FIELD!r}. Change KEY_FIELD.")
+    rows.append({KEY_FIELD: k, **v})
+
+table = pa.Table.from_pylist(rows)
+pq.write_table(table, PARQUET_LOCAL, compression="zstd")
+print(f"Parquet written: {PARQUET_LOCAL} rows={table.num_rows}")
