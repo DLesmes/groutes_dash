@@ -6,13 +6,14 @@ import json
 
 # %% [markdown]
 # ## appending annotated jsonl batches to get full annotated data
-df_annotated_til_20180219 = pd.read_json('../backend/data/annotations/until_20180219_annotations.jsonl', lines=True)
+df_annotated_til_20240531 = pd.read_json('../backend/data/annotations/until_20240531_annotations.jsonl', lines=True)
 batches_list = [
-    df_annotated_til_20180219
+    df_annotated_til_20240531
 ]
 df_full_annotations = pd.DataFrame()
 for batch in batches_list:
     df_full_annotations = pd.concat([df_full_annotations, batch], ignore_index=True)
+df_full_annotations.drop_duplicates(subset=['date'], inplace=True, keep='last')
 df_full_annotations
 # %%
 df_full_annotations.info()
