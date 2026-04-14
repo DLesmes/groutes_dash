@@ -1,46 +1,83 @@
-""" Script to generate final contracts based on annotatd data"""
-# %%
-import pandas as pd
-from datetime import date
-import json
+"""
+Generador de contratos finales.
 
-# %% [markdown]
-# ## appending annotated jsonl batches to get full annotated data
-df_annotated_til_20240531 = pd.read_json('../backend/data/annotations/until_20240531_annotations.jsonl', lines=True)
-batches_list = [
-    df_annotated_til_20240531
-]
-df_full_annotations = pd.DataFrame()
-for batch in batches_list:
-    df_full_annotations = pd.concat([df_full_annotations, batch], ignore_index=True)
-df_full_annotations.drop_duplicates(subset=['date'], inplace=True, keep='last')
-df_full_annotations
-# %%
-df_full_annotations.info()
-# %%
-# %%
-df_full_annotations.describe(include='all').T
-# %% [markdown]
-# ## generating all visits groutes by day
-file = "../backend/data/visitas_business_days_by_day.json"
-dict_visits_business_days_by_day = json.load(open(file, 'r'))
-dict_visits_business_days_by_day['2018-06-15']
-# %% [markdown]
-# ## adding the start and end timestamps to the annotations dataframe
-df_final_contract = df_full_annotations[df_full_annotations['working']].copy()
-df_final_contract.reset_index(inplace=True)
-df_final_contract['index'] = df_final_contract.index
-df_final_contract['start_timestamp'] = None
-df_final_contract['end_timestamp'] = None
-df_final_contract
-# %%
-for _, day in df_final_contract.iterrows():
-    date_str = str(day.date.strftime('%Y-%m-%d'))
-    df_final_contract.loc[day['index'], 'start_timestamp'] = dict_visits_business_days_by_day[date_str]['data'][int(day.start_point)]['timestamp']
-    df_final_contract.loc[day['index'], 'end_timestamp'] = dict_visits_business_days_by_day[date_str]['data'][int(day.end_point)]['timestamp']
-# %%
-df_final_contract = df_final_contract.drop(columns=['index', 'working', 'start_point', 'end_point', 'total_points'])
-df_final_contract
-# %% [markdown]
-# ## generating final contract
-df_final_contract.to_csv('../backend/data/final_contract.csv', index=False)
+Lee las anotaciones manuales (días laborales marcados con punto de inicio/fin)
+y el detalle de visitas por día, para producir un CSV con las fechas, timestamps
+de inicio y fin de jornada, y la duración del recorrido.
+
+Entrada:
+    - backend/data/annotations/annotations.jsonl  (anotaciones por día)
+    - backend/data/visitas_business_days_by_day.json (detalle de visitas)
+Salida:
+    - backend/data/final_contract.csv
+"""
+
+import json
+from pathlib import Path
+
+import pandas as pd
+
+# ---------------------------------------------------------------------------
+# 1. Rutas base
+# ---------------------------------------------------------------------------
+_THIS_DIR = Path(__file__).resolve().parent
+_DATA_DIR = _THIS_DIR / ".." / "backend" / "data"
+
+# ---------------------------------------------------------------------------
+# 2. Cargar y consolidar anotaciones
+#    Cada lote es un archivo JSONL con una anotación por línea.
+#    Se concatenan todos los lotes y se eliminan duplicados por fecha,
+#    conservando la anotación más reciente.
+# ---------------------------------------------------------------------------
+df_annotated_til_20240531 = pd.read_json(
+    _DATA_DIR / "annotations" / "annotations.jsonl",
+    lines=True,
+)
+
+batches_list = [df_annotated_til_20240531]
+df_full_annotations = pd.concat(batches_list, ignore_index=True)
+df_full_annotations.drop_duplicates(subset=["date"], inplace=True, keep="last")
+
+# ---------------------------------------------------------------------------
+# 3. Cargar el diccionario de visitas por día
+#    Estructura: { "YYYY-MM-DD": { "data": [ { "timestamp": ... }, ... ] } }
+# ---------------------------------------------------------------------------
+with open(_DATA_DIR / "visitas_business_days_by_day.json", "r") as f:
+    dict_visits_by_day = json.load(f)
+
+# ---------------------------------------------------------------------------
+# 4. Filtrar solo los días marcados como laborales
+# ---------------------------------------------------------------------------
+df_final_contract = df_full_annotations[df_full_annotations["working"]].copy()
+df_final_contract.reset_index(drop=True, inplace=True)
+
+# ---------------------------------------------------------------------------
+# 5. Resolver timestamps de inicio y fin de jornada
+#    Cada anotación tiene start_point / end_point que son índices dentro
+#    del arreglo de visitas de ese día.
+# ---------------------------------------------------------------------------
+for idx, day in df_final_contract.iterrows():
+    date_str = day["date"].strftime("%Y-%m-%d")
+    visits = dict_visits_by_day[date_str]["data"]
+    df_final_contract.loc[idx, "inicio"] = visits[int(day["start_point"])]["timestamp"]
+    df_final_contract.loc[idx, "fin"] = visits[int(day["end_point"])]["timestamp"]
+
+# ---------------------------------------------------------------------------
+# 6. Limpiar columnas auxiliares y calcular duración del recorrido
+# ---------------------------------------------------------------------------
+df_final_contract.drop(
+    columns=["working", "start_point", "end_point", "total_points"], inplace=True
+)
+
+df_final_contract["inicio"] = pd.to_datetime(df_final_contract["inicio"])
+df_final_contract["fin"] = pd.to_datetime(df_final_contract["fin"])
+df_final_contract["recorrido"] = df_final_contract["fin"] - df_final_contract["inicio"]
+
+df_final_contract.rename(columns={"date": "fecha"}, inplace=True)
+
+# ---------------------------------------------------------------------------
+# 7. Exportar resultado
+# ---------------------------------------------------------------------------
+df_final_contract.to_csv(
+    _DATA_DIR / "resultados_uriel_mazabuel_etiquetados.csv", index=False
+)
